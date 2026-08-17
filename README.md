@@ -1,5 +1,6 @@
 # TamaPoke
 
+[![CI](https://github.com/ajtudela/TamaPoke/actions/workflows/ci.yml/badge.svg)](https://github.com/ajtudela/TamaPoke/actions/workflows/ci.yml)
 [![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://socquique.github.io/TamaPoke/web/)
 [![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
 ![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)

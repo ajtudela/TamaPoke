@@ -8,6 +8,17 @@ over serial at boot.
 
 ## [Unreleased]
 
+### Added
+
+- CI on GitHub Actions (`.github/workflows/ci.yml`), three jobs: compile the firmware
+  against the exact FQBN and libraries the README documents (pinned to
+  `esp32:esp32@3.3.11`, the version verified to build cleanly, with `--warnings=all`);
+  regenerate `include/dex.hpp` and `include/species.hpp` and fail if that produces a
+  diff, so a hand-edited generated file gets caught; and lint `tools/` with `ruff`.
+  The lint job is scoped to pyflakes correctness rules only (`ruff.toml`) — the
+  scripts predate any style convention, and a full style pass is separate, larger
+  work than wiring up CI.
+
 ### Changed
 
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following

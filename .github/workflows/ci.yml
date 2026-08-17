@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    # branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  firmware:
+    name: Compile firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2.0.0
+
+      # Pinned to the exact esp32:esp32 core version verified to build this
+      # sketch cleanly. Bump deliberately, not automatically: newer core
+      # releases have broken third-party libraries before.
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.11
+
+      - name: Install libraries
+        run: arduino-cli lib install "GFX Library for Arduino" SensorLib XPowersLib
+
+      - name: Compile
+        run: >
+          arduino-cli compile --warnings=all
+          --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
+          .
+
+  generated:
+    name: Generated headers up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install pillow
+
+      - name: Regenerate include/dex.hpp and include/species.hpp
+        run: |
+          python3 tools/gen_dex.py
+          python3 tools/sprites.py emit
+
+      # dex.hpp and species.hpp are marked "GENERATED - do not edit" in their
+      # own header comment; this catches anyone who edited the output instead
+      # of the generator, or forgot to regenerate after touching the source data.
+      - name: Fail if regenerating produced a diff
+        run: git diff --exit-code -- include/dex.hpp include/species.hpp
+
+  tools-lint:
+    name: Lint tools/ (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install ruff
+      - run: ruff check tools/
