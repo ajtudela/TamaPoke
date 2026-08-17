@@ -169,6 +169,12 @@ bool sdSerialCommand(const String &line) {
       return true;
     }
     if (!path.startsWith("/")) path = "/" + path;
+    // acota la escritura a /mons/: la ruta llega tal cual de la linea serie,
+    // sin sanear (".." incluido rechaza cualquier intento de salir de ahi)
+    if (!path.startsWith("/mons/") || path.indexOf("..") >= 0) {
+      Serial.println("ERR");
+      return true;
+    }
     File f = SD_MMC.open(path, FILE_WRITE);
     if (!f) {
       Serial.println("ERR");
@@ -182,7 +188,7 @@ bool sdSerialCommand(const String &line) {
       size_t want = remaining > sizeof(buf) ? sizeof(buf) : remaining;
       size_t n = Serial.readBytes(buf, want);
       if (n == 0) break;  // timeout
-      f.write(buf, n);
+      if (f.write(buf, n) != n) break;  // tarjeta llena o fallo de escritura
       remaining -= n;
       Serial.println("#");  // ack: listo para el siguiente bloque
     }

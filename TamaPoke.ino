@@ -327,11 +327,25 @@ void updateBrightness(uint32_t now) {
 
 // ---------- consola serie (provision de SD + depuracion) ----------
 
+// acumula bytes del puerto serie sin bloquear el loop; procesa cada linea
+// completa. Antes usaba Serial.readStringUntil('\n'), que bloquea hasta 1s
+// (el timeout de Serial) si llega un byte suelto sin salto de linea detras
+// (ruido en el puerto, por ejemplo): congelaba el juego un segundo entero.
 void handleSerial() {
-  if (!Serial.available()) return;
-  String line = Serial.readStringUntil('\n');
-  line.trim();
-  if (line.length() == 0) return;
+  static String lineBuf;
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n') {
+      lineBuf.trim();
+      if (lineBuf.length()) processSerialLine(lineBuf);
+      lineBuf = "";
+    } else if (c != '\r' && lineBuf.length() < 128) {
+      lineBuf += c;
+    }
+  }
+}
+
+void processSerialLine(const String &line) {
   if (sdSerialCommand(line)) return;
 
   if (line == "HATCH") {

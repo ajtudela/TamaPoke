@@ -65,6 +65,16 @@ over serial at boot.
   numbers. Sprites and the framebuffer live in PSRAM, not heap, so `heap`/`min` alone
   couldn't predict a `ps_malloc()` failure from PSRAM fragmentation — exactly the
   metric the pending 24-48h soak test needs.
+- The `PUT` protocol (SD provisioning over USB) now checks that `f.write()` actually
+  wrote every byte instead of ignoring its return value — previously a full or failing
+  card would still get a `DONE`, leaving a silently truncated file on the SD (exactly
+  the kind of corrupt input the earlier TPK2/`thumbs.bin` fixes above had to guard
+  against). It also rejects any destination path that doesn't resolve under `/mons/`
+  or that contains `..`, instead of writing wherever the line said to.
+- `handleSerial()` no longer blocks the game loop for up to a second on stray serial
+  bytes with no trailing newline (`Serial.readStringUntil('\n')`'s timeout). It now
+  assembles lines byte-by-byte from `Serial.available()` and only dispatches once a
+  full line has arrived, in a new `processSerialLine()`.
 
 ## [1.4] - 2026-08-07
 
