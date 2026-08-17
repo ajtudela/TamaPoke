@@ -10,14 +10,25 @@ over serial at boot.
 
 ### Added
 
-- CI on GitHub Actions (`.github/workflows/ci.yml`), three jobs: compile the firmware
+- CI on GitHub Actions (`.github/workflows/ci.yml`), four jobs: compile the firmware
   against the exact FQBN and libraries the README documents (pinned to
   `esp32:esp32@3.3.11`, the version verified to build cleanly, with `--warnings=all`);
   regenerate `include/dex.hpp` and `include/species.hpp` and fail if that produces a
-  diff, so a hand-edited generated file gets caught; and lint `tools/` with `ruff`.
-  The lint job is scoped to pyflakes correctness rules only (`ruff.toml`) — the
-  scripts predate any style convention, and a full style pass is separate, larger
-  work than wiring up CI.
+  diff, so a hand-edited generated file gets caught; lint `tools/` with `ruff`
+  (scoped to pyflakes correctness rules only, `ruff.toml` — the scripts predate any
+  style convention, and a full style pass is separate, larger work than wiring up
+  CI); and the i18n format-specifier consistency check below.
+- `tools/test_i18n_formats.py`: parses `STRINGS[][]` and the three `MED_*[][]` medal
+  tables straight out of `src/i18n.cpp` and checks, for every string ID, that all 6
+  languages use the same `%`-format specifiers in the same order — several of these
+  strings are used as `snprintf()` format arguments (not literals), so the compiler
+  can't catch a mismatched translation with `-Wformat`; a wrong specifier is
+  undefined behavior that only shows up in the affected language. Also checks every
+  language row has exactly as many entries as `StrId`/`MED_COUNT` expect: `STRINGS`
+  is declared with both array dimensions fixed, so a row with too *few* strings
+  doesn't fail to compile — the missing slots are silently null-initialized instead.
+  Verified to both pass on the current tables and correctly fail when a specifier
+  was deliberately removed from one language's string, restored before committing.
 
 ### Changed
 

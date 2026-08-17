@@ -65,3 +65,13 @@ jobs:
           python-version: "3.x"
       - run: pip install ruff
       - run: ruff check tools/
+
+  i18n:
+    name: i18n format-specifier consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: python3 tools/test_i18n_formats.py
