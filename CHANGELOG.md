@@ -53,6 +53,18 @@ over serial at boot.
   would mean forcing an artificial shared representation onto a much lower-volume,
   differently-shaped code path for little real gain.
 
+### Fixed
+
+- The ball minigame's physics no longer run at "one step per rendered frame".
+  `stepGame()` treated gravity/velocity/the chasing pet's speed as fixed per-call
+  increments, but calls happen whenever `loop()`'s frame scheduler decides to render
+  — which takes longer for a bigger sprite — so the ball fell measurably slower with
+  a large species loaded (e.g. Charizard) than a small one (e.g. Diglett), and the
+  minigame's high score wasn't comparable across species. `stepGame()` now measures
+  real elapsed time since its last call and scales gravity, position, and the pet's
+  chase speed by that (relative to the ~85 ms step the constants were originally
+  tuned around, capped at 3x to avoid a large jump after an unusually late frame).
+
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following
   Arduino's `src` sketch convention (compiled recursively, not shown as IDE tabs).
   `pin_config.h`, `dex.h`, `species.h`, `pet.h`, `audio.h`, `rtcbat.h`, `sdmon.h` and
