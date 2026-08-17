@@ -41,6 +41,14 @@ over serial at boot.
   the web bundle) before flashing or deploying — they were never meant to ship in the
   repo itself.
 
+### Fixed
+
+- `PmdMon::load()` now rejects zero-length frame durations in TPK2 sprites (clamped to
+  100 ms), and `pmdFrameAt()` is bounded by a frame-count guard regardless. A sprite
+  file with every duration set to 0 used to spin `pmdFrameAt()` forever inside the
+  render loop — a hang triggerable by any corrupt or malicious `.bin` reaching the SD
+  card over USB.
+
 ## [1.4] - 2026-08-07
 
 ### Fixed
