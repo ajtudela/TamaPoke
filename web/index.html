@@ -85,7 +85,18 @@
      Pokémon is a ™ of Nintendo / Game Freak. Non-commercial project.</p>
 </div>
 
-<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
+<!-- pinned to an exact version (not the floating @10 range) with Subresource
+     Integrity, so a compromised or unexpectedly-changed CDN file can't run
+     silently. Note: SRI only covers this entry file; its own dynamic
+     import()s of the install-dialog/index chunks aren't covered by this tag
+     -- fully closing that gap would mean vendoring esp-web-tools' whole
+     dist/web/ chunk graph, which is more than a pin+SRI fix should take on.
+     Bumping the version requires recomputing the hash:
+       curl -s https://unpkg.com/esp-web-tools@X.Y.Z/dist/web/install-button.js \
+         | openssl dgst -sha384 -binary | openssl base64 -A -->
+<script type="module" crossorigin="anonymous"
+        integrity="sha384-9XfyvAabgkISlB/Xb3OpshGKpZx0TOt5Mmu78SeiNU3so/p4o2s9m66vy6Utdnom"
+        src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js"></script>
 <script>
 const log = (m) => { const el = document.getElementById('log'); el.style.display='block';
   el.textContent += m + '\n'; el.scrollTop = el.scrollHeight; };
@@ -148,15 +159,36 @@ function parsePak(buf) {
   return items;
 }
 
+// resume support: remembers which files were already confirmed (name+size,
+// so a regenerated bundle with different content under the same name isn't
+// silently skipped), so a reload after a dropped connection doesn't have to
+// redo the full ~40 MB / ~10 min transfer from scratch
+const RESUME_KEY = 'tamapoke_sent_files';
+const loadResumeSet = () => { try { return new Set(JSON.parse(localStorage.getItem(RESUME_KEY) || '[]')); } catch { return new Set(); } };
+const saveResumeSet = (s) => { try { localStorage.setItem(RESUME_KEY, JSON.stringify([...s])); } catch {} };
+const clearResumeSet = () => { try { localStorage.removeItem(RESUME_KEY); } catch {} };
+
 async function sendAll(items) {
   const bar = document.getElementById('bar'); bar.style.display = 'block';
   const fill = bar.firstElementChild;
-  let done = 0, fail = 0;
+  const sent = loadResumeSet();
+  let done = 0, fail = 0, skipped = 0;
   for (const it of items) {
-    if (!await sendOne(it.name, it.data)) { log('   failed ' + it.name); fail++; }
+    const key = `${it.name}:${it.data.length}`;
+    if (sent.has(key)) {
+      skipped++;
+    } else if (await sendOne(it.name, it.data)) {
+      sent.add(key);
+      saveResumeSet(sent);
+    } else {
+      log('   failed ' + it.name);
+      fail++;
+    }
     done++;
     fill.style.width = (done / items.length * 100) + '%';
   }
+  if (skipped) log(`Resumed: skipped ${skipped} already-sent file(s) from an earlier attempt.`);
+  if (fail === 0) clearResumeSet();  // fully confirmed: don't skip anything on the next run
   log(`Done (${done - fail}/${items.length}). Restart the board (PWR button).`);
 }
 

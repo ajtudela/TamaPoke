@@ -92,6 +92,16 @@ over serial at boot.
   `ensureMon()` already reloaded the active PMD sprite when `sdDirty` was set after a
   `PUT`, but never touched `thumbs` (loaded once in `setup()`), so `thumbs.bin` sent
   by the web installer stayed invisible until the next reboot.
+- `web/index.html`'s `esp-web-tools` script tag now pins an exact version (`10.4.0`
+  instead of the floating `@10` range) and carries Subresource Integrity, so a
+  changed or compromised CDN file fails closed instead of running silently. (SRI only
+  covers this entry file, not the chunks it dynamically `import()`s afterward —
+  closing that fully would mean vendoring the whole `dist/web/` chunk graph, more
+  than this fix takes on.)
+- The sprite upload (`sendAll()`) now survives a dropped connection or reload:
+  successfully confirmed files are remembered in `localStorage` (by name + size) and
+  skipped on a retry, instead of resending the full ~40 MB / ~10 min transfer from
+  scratch. The remembered set is cleared once every file in a run is confirmed.
 
 ## [1.4] - 2026-08-07
 
