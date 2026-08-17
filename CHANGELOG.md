@@ -82,6 +82,12 @@ over serial at boot.
   screen, the edges are exactly where a finger rests without meaning to. Concretely:
   tapping the round screen's left edge used to open Pokédex entry #1's detail view,
   and tapping just above the keyboard used to type the letter 'A'.
+- Synced the README's firmware badge (was `v1.2`, `FW_VERSION` is `1.4`) and fixed
+  three comments in `include/pet.hpp`/`src/pet.cpp` that described the farewell
+  ceremony as "final form + 7 days" — `FAREWELL_AGE_MIN` is 3 days, and the README
+  already documented 3 correctly. Also fixed `web/index.html`'s sprite-bundle-size
+  log message, still saying "~58 MB" after the README and `web/README.md` were
+  already corrected to the real ~40 MB.
 
 ## [1.4] - 2026-08-07
 

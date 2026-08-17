@@ -183,7 +183,7 @@ void Pet::tick() {
     neglectTicks = 0;  // un solo cuidado la salva
   }
 
-  // ciclo completo (forma final + 7 dias): la despedida NO salta sola; queda
+  // ciclo completo (forma final + 3 dias): la despedida NO salta sola; queda
   // lista (canFarewellNow) y la dispara el usuario con el boton, para que la vea
 
   // autoguardado periodico: NO escribir a flash aqui (corre dentro del loop,
@@ -342,7 +342,7 @@ uint16_t Pet::registeredCount() const {
   return n;
 }
 
-// forma final que ya cumplio su ciclo (7 dias): lista para despedirse. La
+// forma final que ya cumplio su ciclo (3 dias): lista para despedirse. La
 // despedida la dispara el usuario con el boton (no salta sola, para que la vea)
 bool Pet::canFarewellNow() const {
   return !isEgg() && !sleeping && ceremony == CER_NONE &&

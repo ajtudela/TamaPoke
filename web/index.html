@@ -177,7 +177,7 @@ document.getElementById('connect').onclick = async () => {
 document.getElementById('auto').onclick = async () => {
   if (!writer) { log('Connect the board first.'); return; }
   document.getElementById('auto').disabled = true;
-  log('Downloading sprite bundle (~58 MB)...');
+  log('Downloading sprite bundle (~40 MB)...');
   let items;
   try {
     // sprites.pak servido desde el mismo origen (GitHub Pages) -> sin lios de CORS

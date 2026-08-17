@@ -105,7 +105,7 @@ public:
   }
   bool canEvolveNow() const;  // condiciones de evolucion cumplidas (lista)
   void evolve();              // dispara la transformacion (la llama un toque del usuario)
-  bool canFarewellNow() const;  // forma final + 7 dias: lista para despedirse (boton)
+  bool canFarewellNow() const;  // forma final + 3 dias: lista para despedirse (boton)
   bool canRunawayNow() const;   // abandono total 1h: lista para escaparse (boton triste)
   // el usuario decide en un dialogo; "mantener/quedaros" pospone y re-ofrece luego
   bool wantEvolveButton() const { return canEvolveNow() && level() > evoDeclinedLv; }
