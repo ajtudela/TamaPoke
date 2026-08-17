@@ -18,6 +18,29 @@ over serial at boot.
 - Updated `tools/gen_dex.py` and `tools/sprites.py` to write their generated headers to
   `include/dex.hpp` and `include/species.hpp`.
 
+### Removed
+
+- Removed the TPK1 legacy sprite fallback (`SdMon` struct, `drawPetSD()`, and its call
+  sites in `ensureMon()`, `renderGame()`, `drawPet()` and the `HEALTH`/`STATS` serial
+  commands): no packer in the repo has produced that format since the project moved to
+  PMD/TPK2, so the path was unreachable in practice.
+- Removed `Pet::feed()`, an unused compatibility wrapper with no remaining callers
+  (`feedBerry()`/`feedCandy()` are used instead).
+- Removed unused fields from the generated `Species` struct (`name`, `type`,
+  `evolvesTo`, `evolveLevel`, `accent`), the `ElementType` enum, `SPRITE_W`, and
+  `STARTERS`/`NUM_STARTERS` — all dead since `dex.h`/`DEX_TBL` took over species
+  identity and evolution data. Regenerated `include/species.hpp` via
+  `tools/sprites.py emit`; sprite pixel data is unchanged.
+- Removed `tools/import_gif.py`, an orphaned importer the project's own docs already
+  described as obsolete.
+- Stopped tracking the generated sprite and firmware binaries in git
+  (`tools/sdcard/mons/*.bin`, `web/sprites.pak`, `web/firmware/tamapoke.bin`): ~80 MB of
+  regenerable binary blobs don't belong in version control. Added them to
+  `.gitignore`; the README and `web/README.md` now make clear these must be built
+  locally (`tools/pack_pmd.py` + `tools/make_thumbs.py`, or `tools/build_web.sh` for
+  the web bundle) before flashing or deploying — they were never meant to ship in the
+  repo itself.
+
 ## [1.4] - 2026-08-07
 
 ### Fixed

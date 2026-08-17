@@ -13,3 +13,10 @@ tools/demo_compare.js
 
 .DS_Store
 tools/pmd_cache/
+
+# generated binaries - never commit these; see README for how to build them
+tools/sdcard/mons/*.bin
+web/sprites.pak
+web/firmware/*.bin
+
+.claude

@@ -162,10 +162,16 @@ the SD over Web Serial, no Arduino needed. Serve it over HTTPS or `localhost`
 
 ### Generate and load the sprites yourself
 
+The sprite `.bin` files are **not** in this repository (they're gitignored — see
+[Credits](#credits): the packaged PMD assets shouldn't be redistributed
+commercially, and ~40 MB of binaries don't belong in git history either). You
+need to generate them yourself before the game has anything to display, and
+load them onto your board with the pipeline below — the firmware accepts files
+over USB (PUT protocol with per-block ACK), so you don't have to remove the
+card (it formats the SD to FAT if needed).
+
 All sprites come from **[PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab)**
-(CC BY-NC). You can regenerate the whole set and load it onto your board with the
-pipeline below — the firmware accepts files over USB (PUT protocol with per-block
-ACK), so you don't have to remove the card (it formats the SD to FAT if needed).
+(CC BY-NC).
 
 ```bash
 python3 tools/pack_pmd.py       # fetch + pack PMD sprites: the 151 + shiny -> tools/sdcard/mons/p[s]NNN.bin
@@ -181,7 +187,8 @@ python3 tools/pack_bundle.py    # bundle tools/sdcard/mons/* into web/sprites.pa
 
 Then load it from the web installer's **"Load sprites"** button (or `send_sd.py`
 above). `pack_pmd.py` also takes individual dex numbers, e.g. `pack_pmd.py 7 25`.
-(~40 MB total, all PMD. Versioned under `tools/sdcard/`.)
+(~40 MB total, all PMD, generated under `tools/sdcard/` — gitignored, regenerate
+whenever you need them.)
 
 ## How to play
 

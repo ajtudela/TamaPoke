@@ -69,7 +69,6 @@ public:
   void update(uint32_t nowMs);  // llamar en cada loop()
 
   // Acciones (botones tactiles)
-  void feed();              // baya roja (compatibilidad)
   void feedBerry(uint8_t color);  // 0 roja, 1 azul, 2 verde
   void feedCandy();
   bool lovesBerry(uint8_t color) const {

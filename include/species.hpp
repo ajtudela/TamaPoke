@@ -4,7 +4,6 @@
 // GENERADO por tools/sprites.py - edita alli y ejecuta:
 //   python3 tools/sprites.py emit
 
-#define SPRITE_W 32
 #define SPRITE_H 32
 
 #define UI_BG_DAY 0xF77C  // #f2efe1
@@ -16,8 +15,6 @@
 #define UI_BAR_WARN 0xED07  // #e8a23c
 #define UI_BAR_BAD 0xEA87  // #e8503a
 #define UI_WHITE 0xFFFF  // #ffffff
-
-enum ElementType : uint8_t { TYPE_FUEGO, TYPE_PLANTA, TYPE_AGUA };
 
 enum : int8_t {
   SP_CHARMANDER = 0,
@@ -33,16 +30,11 @@ enum : int8_t {
 };
 
 struct Species {
-  const char *name;
-  ElementType type;
   const char *const *sprite;
   uint8_t scale;
-  int8_t evolvesTo;
-  uint8_t evolveLevel;
   uint8_t eyeRow, eyeColL, eyeColR;  // anclas para expresiones (ojos 3x4)
   uint8_t mouthRow, mouthCol;
   uint16_t bodyColor;  // para borrar ojos/boca al expresar
-  uint16_t accent;     // color UI del tipo
 };
 
 // caracter de sprite -> RGB565
@@ -603,27 +595,27 @@ static const char* const SPR_HEART[32] = {  // 32x32
   "................................",
   "................................",
   "................................",
-  "........krrrrk....krrrrk........",
-  ".......krrrrrrk..krrrrrrk.......",
-  "......krrrrrrrrrrrrrrrrrrk......",
-  ".....krrrrrrrrrrrrrrrrrrrrk.....",
-  ".....krrwwrrrrrrrrrrrrrrRrk.....",
-  ".....krwwrrrrrrrrrrrrrrRRrk.....",
-  "......krrrrrrrrrrrrrrrrrrk......",
-  ".......krrrrrrrrrrrrrrrrk.......",
-  "........krrrrrrrrrrrrrrk........",
-  ".........krrrrrrrrrrrrk.........",
-  "..........krrrrrrrrrrk..........",
-  "...........krrrrrrrrk...........",
-  "............krrrrrrk............",
-  ".............krrrrk.............",
-  "..............krrk..............",
+  "................................",
+  ".........kkkk.......kkkk........",
+  ".......kkrrrrkk...kkrrrrkk......",
+  "......krrrrrrrrk.krrrrrrrrk.....",
+  "......krrwwrrrrk.krrrrrrrrk.....",
+  ".....krrwrrrrrrRkrrrrrrrrrRk....",
+  ".....krrrrrrrrrRrrrrrrrrrrRk....",
+  ".....krrrrrrrrrrrrrrrrrrrrRk....",
+  "......krrrrrrrrrrrrrrrrrrrk.....",
+  "......krrrrrrrrrrrrrrrrrrrk.....",
+  ".......kkrrrrrrrrrrrrrrRkk......",
+  ".........krrrrrrrrrrrrRk........",
+  ".........krrrrrrrrrrrrRk........",
+  "........krrrrrrrrrrrrrRRk.......",
+  ".........krrrrrrrrrrrrRk........",
+  ".........krrrrrrrrrrrRRk........",
+  ".........krrrrrrrrrrrRRk........",
+  "..........krrrrrrrrRRRk.........",
+  "...........krrRRRRRRRk..........",
+  "............kkkRRkkkk...........",
   "...............kk...............",
-  "................................",
-  "................................",
-  "................................",
-  "................................",
-  "................................",
   "................................",
   "................................",
   "................................",
@@ -632,16 +624,13 @@ static const char* const SPR_HEART[32] = {  // 32x32
 };
 
 static const Species SPECIES[NUM_SPECIES] = {
-  { "CHARMANDER", TYPE_FUEGO, SPR_CHARMANDER, 5, SP_CHARMELEON, 16, 6, 9, 17, 12, 13, 0xF427, 0xEA87 },
-  { "CHARMELEON", TYPE_FUEGO, SPR_CHARMELEON, 6, SP_CHARIZARD, 36, 6, 8, 16, 12, 12, 0xEA87, 0xEA87 },
-  { "CHARIZARD", TYPE_FUEGO, SPR_CHARIZARD, 7, -1, 0, 6, 10, 18, 12, 14, 0xF427, 0xEA87 },
-  { "BULBASAUR", TYPE_PLANTA, SPR_BULBASAUR, 5, SP_IVYSAUR, 16, 10, 6, 13, 16, 9, 0x8EB6, 0x3C49 },
-  { "IVYSAUR", TYPE_PLANTA, SPR_IVYSAUR, 6, SP_VENUSAUR, 36, 10, 6, 13, 16, 9, 0x8EB6, 0x3C49 },
-  { "VENUSAUR", TYPE_PLANTA, SPR_VENUSAUR, 7, -1, 0, 10, 5, 12, 16, 8, 0x8EB6, 0x3C49 },
-  { "SQUIRTLE", TYPE_AGUA, SPR_SQUIRTLE, 5, SP_WARTORTLE, 16, 5, 8, 16, 11, 12, 0x7E3D, 0x4C98 },
-  { "WARTORTLE", TYPE_AGUA, SPR_WARTORTLE, 6, SP_BLASTOISE, 36, 6, 7, 15, 12, 11, 0x9D5C, 0x4C98 },
-  { "BLASTOISE", TYPE_AGUA, SPR_BLASTOISE, 7, -1, 0, 6, 11, 19, 12, 15, 0x3B74, 0x4C98 },
+  { SPR_CHARMANDER, 5, 6, 9, 17, 12, 13, 0xF427 },
+  { SPR_CHARMELEON, 6, 6, 8, 16, 12, 12, 0xEA87 },
+  { SPR_CHARIZARD, 7, 6, 10, 18, 12, 14, 0xF427 },
+  { SPR_BULBASAUR, 5, 10, 6, 13, 16, 9, 0x8EB6 },
+  { SPR_IVYSAUR, 6, 10, 6, 13, 16, 9, 0x8EB6 },
+  { SPR_VENUSAUR, 7, 10, 5, 12, 16, 8, 0x8EB6 },
+  { SPR_SQUIRTLE, 5, 5, 8, 16, 11, 12, 0x7E3D },
+  { SPR_WARTORTLE, 6, 6, 7, 15, 12, 11, 0x9D5C },
+  { SPR_BLASTOISE, 7, 6, 11, 19, 12, 15, 0x3B74 },
 };
-
-static const int8_t STARTERS[] = { SP_CHARMANDER, SP_BULBASAUR, SP_SQUIRTLE };
-#define NUM_STARTERS 3

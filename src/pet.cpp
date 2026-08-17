@@ -435,10 +435,6 @@ void Pet::evolve() {
   save();
 }
 
-void Pet::feed() {
-  feedBerry(0);
-}
-
 void Pet::feedBerry(uint8_t color) {
   if (ceremony != CER_NONE) return;
   if (isEgg() || sleeping) return;

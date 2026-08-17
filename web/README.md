@@ -10,9 +10,11 @@ same one as `tools/send_sd.py`).
 
 - `index.html` — the page (flashing + sprite loader).
 - `manifest.json` — ESP Web Tools config (points at the firmware).
-- `firmware/tamapoke.bin` — combined firmware, flashable at `0x0`.
+- `firmware/tamapoke.bin` — combined firmware, flashable at `0x0`. **Generated** by
+  `tools/build_web.sh` (gitignored — see *Regenerate* below). Neither this repo
+  nor the deployed page ships with a prebuilt copy; you need to build it first.
 - `sprites.pak` — all the sprites in one bundle (TPAK), so the page sends them in
-  one click. **Generated** by `tools/pack_bundle.py` (gitignored by default — see
+  one click. **Generated** by `tools/pack_bundle.py` (gitignored — see
   *Hosting the sprites* below).
 
 ## Regenerate
@@ -46,7 +48,7 @@ A hidden "pick them manually" option lets advanced users send their own `.bin`.
 
 ## Hosting the sprites
 
-`sprites.pak` is ~58 MB and **gitignored** so it doesn't bloat the repo. To make
+`sprites.pak` is ~40 MB and **gitignored** so it doesn't bloat the repo. To make
 the one-click sprite loader work on a real deployment, pick one:
 
 - **Commit it** — add `web/sprites.pak` to git and serve it from Pages. Simple,

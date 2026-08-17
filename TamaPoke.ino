@@ -37,7 +37,6 @@ TouchDrvCST92xx touch;
 Pet pet;
 
 // sprite animado de la SD para la especie actual (si existe el archivo)
-SdMon mon;          // sprite B/N (respaldo y minijuego si no hay PMD)
 PmdMon pmd;         // sprite PMD multi-accion (pantalla principal)
 PmdMon evoPmd;      // forma anterior, solo durante el parpadeo de evolucion
 int16_t monFor = -2;
@@ -227,14 +226,12 @@ void ensureMon() {
   sdDirty = false;
   monFor = pet.speciesId;
   monShinyFor = pet.shiny;
-  mon.unload();
   pmd.unload();
   beh.x = beh.targetX = 233;
   beh.mode = 0;
   beh.until = 0;
   if (pet.speciesId >= 1 && pet.speciesId <= DEX_COUNT) {
-    pmd.load(pet.speciesId, pet.shiny);          // principal: PMD
-    if (!pmd.loaded) mon.load(pet.speciesId, pet.shiny);  // respaldo: B/N
+    pmd.load(pet.speciesId, pet.shiny);
   }
 }
 
@@ -412,12 +409,12 @@ void handleSerial() {
   } else if (line == "HEALTH") {
     Serial.printf("up=%lus heap=%u min=%u sd=%d mon=%d\n",
                   (unsigned long)(millis() / 1000), ESP.getFreeHeap(),
-                  ESP.getMinFreeHeap(), sdReady, pmd.loaded || mon.loaded);
+                  ESP.getMinFreeHeap(), sdReady, pmd.loaded);
     Serial.println("DONE");
   } else if (line == "STATS") {
     Serial.printf("spec=%d nv=%u com=%u fel=%u ene=%u lim=%u desc=%u sd=%d mon=%d bat=%d usb=%d rtc=%u\n",
                   pet.speciesId, pet.level(), pet.fullness, pet.joy, pet.energy,
-                  pet.hygiene, pet.careMistakes, sdReady, mon.loaded,
+                  pet.hygiene, pet.careMistakes, sdReady, pmd.loaded,
                   batPercent(), usbPresent(), rtcEpoch());
     Serial.printf("peso=%u fue=%u def=%u vel=%u genes=%u/%u/%u tr=%u/%u/%u baya=%d\n",
                   pet.weight, pet.atkStat(), pet.defStat(), pet.speStat(),
@@ -1204,19 +1201,6 @@ void renderGame() {
     uint8_t act = (ballX > gamePetX + 4) ? PMD_WALKR : (ballX < gamePetX - 4) ? PMD_WALKL : PMD_IDLE;
     if (!pmd.has(act)) act = PMD_IDLE;
     drawPmdAct(act, (int)gamePetX, 394, millis(), true, false, 3);
-  } else if (mon.loaded) {
-    int s = (mon.h * 2 > 130) ? 1 : 2;
-    int w = mon.w * s, h = mon.h * s;
-    uint16_t fm = mon.frameMs ? mon.frameMs : 100;
-    uint16_t fi = (millis() / fm) % mon.frames;
-    const uint8_t *fr = mon.data + (uint32_t)fi * mon.w * mon.h;
-    int px = (int)gamePetX - w / 2, py = 394 - h;
-    for (int r = 0; r < mon.h; r++)
-      for (int c = 0; c < mon.w; c++) {
-        uint8_t idx = fr[r * mon.w + c];
-        if (idx == 0xFF) continue;
-        gfx->fillRect(px + c * s, py + r * s, s, s, mon.pal[idx]);
-      }
   }
 
   // anillo de impacto que se expande y desvanece (feedback suave del golpe)
@@ -2001,10 +1985,6 @@ void drawPet() {
     drawPetPMD();
     return;
   }
-  if (mon.loaded) {
-    drawPetSD();
-    return;
-  }
   int fi = flashIdxForDex(pet.speciesId);
   if (fi < 0) {
     // sin SD y sin sprite de flash: aviso claro de que faltan sprites
@@ -2230,36 +2210,6 @@ void drawPetPMD() {
   drawPmdAct(act, (int)beh.x, PET_GROUND, now - beh.t0, loop || act == PMD_IDLE, false, 5);
 
   if (pet.showHeart()) drawMap(SPR_HEART, 32, (int)beh.x + 50, PET_GROUND - 190, 2, false);
-}
-
-// sprite animado desde la SD: zoom entero por pixel, frames a su ritmo
-void drawPetSD() {
-  int s = mon.scale;
-  int w = mon.w * s, h = mon.h * s;
-  int x = CX - w / 2;
-  int y = PET_CY - h / 2;
-
-  bool sil = false;
-  if (pet.evolving()) {
-    sil = (millis() / 300) % 2;
-  } else if (pet.mood() == MOOD_HAPPY && (millis() / 500) % 2) {
-    y -= 6;  // saltito
-  }
-
-  uint16_t fm = mon.frameMs ? mon.frameMs : 100;
-  uint16_t fi = pet.sleeping ? 0 : (millis() / fm) % mon.frames;
-  const uint8_t *fr = mon.data + (uint32_t)fi * mon.w * mon.h;
-  for (int r = 0; r < mon.h; r++) {
-    const uint8_t *row = fr + r * mon.w;
-    for (int c = 0; c < mon.w; c++) {
-      uint8_t idx = row[c];
-      if (idx == 0xFF) continue;
-      gfx->fillRect(x + c * s, y + r * s, s, s, sil ? INK_K : mon.pal[idx]);
-    }
-  }
-
-  // emotes en vez de expresiones (los sprites importados no tienen anclas)
-  if (pet.showHeart()) drawMap(SPR_HEART, 32, x + w - 30, y - 50, 2, false);
 }
 
 // ojo cerrado: borra el ojo 3x4 y dibuja el parpado

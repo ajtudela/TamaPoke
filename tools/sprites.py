@@ -588,27 +588,21 @@ def emit_c(path="include/species.hpp"):
     out.append("#pragma once\n#include <stdint.h>\n\n")
     out.append("// GENERADO por tools/sprites.py - edita alli y ejecuta:\n")
     out.append("//   python3 tools/sprites.py emit\n\n")
-    out.append(f"#define SPRITE_W {W}\n#define SPRITE_H {H}\n\n")
+    out.append(f"#define SPRITE_H {H}\n\n")
     for name, hexcol in UI_COLORS.items():
         out.append(f"#define {name} 0x{rgb565(hexcol):04X}  // {hexcol}\n")
-    out.append("\nenum ElementType : uint8_t { TYPE_FUEGO, TYPE_PLANTA, TYPE_AGUA };\n\n")
     ids = list(SPECIES_META)
-    out.append("enum : int8_t {\n")
+    out.append("\nenum : int8_t {\n")
     for i, name in enumerate(ids):
         out.append(f"  SP_{name}{' = 0' if i == 0 else ''},\n")
     out.append("  NUM_SPECIES\n};\n\n")
     out.append(
         "struct Species {\n"
-        "  const char *name;\n"
-        "  ElementType type;\n"
         "  const char *const *sprite;\n"
         "  uint8_t scale;\n"
-        "  int8_t evolvesTo;\n"
-        "  uint8_t evolveLevel;\n"
         "  uint8_t eyeRow, eyeColL, eyeColR;  // anclas para expresiones (ojos 3x4)\n"
         "  uint8_t mouthRow, mouthCol;\n"
         "  uint16_t bodyColor;  // para borrar ojos/boca al expresar\n"
-        "  uint16_t accent;     // color UI del tipo\n"
         "};\n\n")
     out.append("// caracter de sprite -> RGB565\n")
     out.append("static inline uint16_t spriteColor(char ch) {\n  switch (ch) {\n")
@@ -622,17 +616,14 @@ def emit_c(path="include/species.hpp"):
         out.append("};\n\n")
     out.append("static const Species SPECIES[NUM_SPECIES] = {\n")
     for name in ids:
-        typ, evo, lvl, scale = SPECIES_META[name]
+        _typ, _evo, _lvl, scale = SPECIES_META[name]
         a = ANCHORS[name]
         body = rgb565(PALETTE[a['body']])
-        acc = rgb565(ACCENT[typ])
         out.append(
-            f'  {{ "{name}", {typ}, SPR_{name}, {scale}, {evo}, {lvl}, '
+            f'  {{ SPR_{name}, {scale}, '
             f"{a['eyeRow']}, {a['eyeL']}, {a['eyeR']}, {a['mouthRow']}, {a['mouthCol']}, "
-            f"0x{body:04X}, 0x{acc:04X} }},\n")
-    out.append("};\n\n")
-    out.append("static const int8_t STARTERS[] = { SP_CHARMANDER, SP_BULBASAUR, SP_SQUIRTLE };\n")
-    out.append("#define NUM_STARTERS 3\n")
+            f"0x{body:04X} }},\n")
+    out.append("};\n")
     open(path, 'w').write(''.join(out))
     print(f"guardado {path}")
 
