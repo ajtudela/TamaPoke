@@ -88,6 +88,10 @@ over serial at boot.
   already documented 3 correctly. Also fixed `web/index.html`'s sprite-bundle-size
   log message, still saying "~58 MB" after the README and `web/README.md` were
   already corrected to the real ~40 MB.
+- The Pokédex gallery's thumbnails now reload after receiving files over USB.
+  `ensureMon()` already reloaded the active PMD sprite when `sdDirty` was set after a
+  `PUT`, but never touched `thumbs` (loaded once in `setup()`), so `thumbs.bin` sent
+  by the web installer stayed invisible until the next reboot.
 
 ## [1.4] - 2026-08-07
 
