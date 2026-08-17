@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include "esp_heap_caps.h"  // heap_caps_get_largest_free_block(): PSRAM diagnostics for HEALTH
 #include "Arduino_GFX_Library.h"
 #include "TouchDrvCSTXXX.hpp"
 #include "include/pin_config.hpp"
@@ -288,8 +289,12 @@ void loop() {
   static uint32_t lastHealth = 0;
   if (now - lastHealth > 300000) {
     lastHealth = now;
-    Serial.printf("HEALTH up=%lus heap=%u min=%u\n", (unsigned long)(now / 1000),
-                  ESP.getFreeHeap(), ESP.getMinFreeHeap());
+    // heap = RAM interna; los sprites y el framebuffer viven en PSRAM y no salen
+    // ahi, asi que psram/psmax son las cifras que de verdad predicen un fallo
+    // de ps_malloc() por fragmentacion en una sesion larga
+    Serial.printf("HEALTH up=%lus heap=%u min=%u psram=%u psmax=%u\n", (unsigned long)(now / 1000),
+                  ESP.getFreeHeap(), ESP.getMinFreeHeap(), ESP.getFreePsram(),
+                  (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
   }
 
   // 85 ms en juego/saco: margen seguro para que el redibujado no pise el envio
@@ -407,9 +412,11 @@ void handleSerial() {
     Serial.println();
     Serial.println("DONE");
   } else if (line == "HEALTH") {
-    Serial.printf("up=%lus heap=%u min=%u sd=%d mon=%d\n",
+    Serial.printf("up=%lus heap=%u min=%u psram=%u psmax=%u sd=%d mon=%d\n",
                   (unsigned long)(millis() / 1000), ESP.getFreeHeap(),
-                  ESP.getMinFreeHeap(), sdReady, pmd.loaded);
+                  ESP.getMinFreeHeap(), ESP.getFreePsram(),
+                  (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+                  sdReady, pmd.loaded);
     Serial.println("DONE");
   } else if (line == "STATS") {
     Serial.printf("spec=%d nv=%u com=%u fel=%u ene=%u lim=%u desc=%u sd=%d mon=%d bat=%d usb=%d rtc=%u\n",

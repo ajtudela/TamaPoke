@@ -331,7 +331,9 @@ beach, forest, volcano, mountain, snow). Sleeping forces night.
 `SHINY` · `NICK <x>` · `BYE` / `RUN` (farewell / runaway) · `ABANDON` (force the
 runaway-ready state) · `WIPE` (factory reset → new game) · `BEEP` (audio test) ·
 `REG` (Pokédex) · `EGGS` (simulate 20 eggs) · `GAL` (gallery) · `CAREDAY` ·
-`TIME <epoch>` / `RTCSET <epoch>` · `HEALTH` (uptime + heap for the soak test) ·
+`TIME <epoch>` / `RTCSET <epoch>` · `HEALTH` (uptime + heap **and PSRAM** for the soak
+test — sprites and the framebuffer live in PSRAM, not heap, so that's the number that
+actually predicts a `ps_malloc()` failure) ·
 `LS` / `PUT` (SD files).
 
 To test fast: lower `PET_TICK_MS`, `MINUTES_PER_LEVEL` and `FAREWELL_AGE_MIN` in `include/pet.hpp`.

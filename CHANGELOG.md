@@ -60,6 +60,11 @@ over serial at boot.
   indefinitely. `level()` and `evoDeclinedLv` are now `uint16_t` (cosmetically
   capped at 999, never wrapped), and `canEvolveNow()` no longer truncates
   `evolveLevel + careMistakes` back to `uint8_t` before comparing against it.
+- The `HEALTH` heartbeat and serial command now report `ESP.getFreePsram()` and
+  `heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)` alongside the existing heap
+  numbers. Sprites and the framebuffer live in PSRAM, not heap, so `heap`/`min` alone
+  couldn't predict a `ps_malloc()` failure from PSRAM fragmentation — exactly the
+  metric the pending 24-48h soak test needs.
 
 ## [1.4] - 2026-08-07
 
