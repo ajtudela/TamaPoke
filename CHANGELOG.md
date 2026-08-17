@@ -32,6 +32,17 @@ over serial at boot.
 
 ### Changed
 
+- Merged `drawScene()` (main screen) and `drawGameScene()` (minigame/training-bag
+  background) into one shared `drawBackground()`. Both drew an identical hour-of-day
+  sky gradient and biome ground color; only `drawScene()` also drew the sun/moon/
+  clouds and the biome-specific ground details (beach sea, horizon hill, forest/
+  volcano/mountain/snow/meadow silhouettes) — those stay exactly as before, gated by
+  new `sunMoonClouds`/`details` parameters, so neither screen's look changes. Also
+  added `isSceneNight()` so the night check (`sceneHour() < 6 || sceneHour() >= 20`)
+  is computed once per render instead of calling `sceneHour()` twice per evaluation
+  (short-circuit `||` re-evaluates it when the first half is false) and separately
+  again in each of `renderSack()`/`renderGame()`/the old `drawGameScene()`.
+
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following
   Arduino's `src` sketch convention (compiled recursively, not shown as IDE tabs).
   `pin_config.h`, `dex.h`, `species.h`, `pet.h`, `audio.h`, `rtcbat.h`, `sdmon.h` and

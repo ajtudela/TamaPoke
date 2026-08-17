@@ -702,6 +702,14 @@ int sceneHour() {
   return e ? (int)((e / 3600) % 24) : 13;
 }
 
+// es de noche por la hora real? (umbral 6-20h que usan las escenas de fondo).
+// Cachea la hora en una variable local: "sceneHour() < 6 || sceneHour() >= 20"
+// llama a sceneHour() dos veces por evaluacion cuando la primera mitad es falsa
+bool isSceneNight() {
+  int h = sceneHour();
+  return h < 6 || h >= 20;
+}
+
 // suelo de cada bioma de dia (de noche se mezcla hacia el azul nocturno)
 static const uint16_t BIOME_SOIL[6] = {
   C565(0x7e, 0xc0, 0x7f),  // 0 pradera
@@ -722,7 +730,15 @@ void drawClouds(uint32_t now, uint16_t col) {
   }
 }
 
-void drawScene(uint8_t biome, uint32_t now, bool night) {
+// escena de fondo compartida por la pantalla principal y el minijuego/saco:
+// cielo por hora + suelo del bioma. `horizon` fija donde se juntan (232 en la
+// pantalla principal, 376 en las escenas mas compactas del minijuego). Las
+// estrellas de noche se pintan siempre (detalle barato); `sunMoonClouds` pinta
+// ademas el sol/la luna/las nubes, y `details` el mar de playa, la loma que
+// suaviza el horizonte y las siluetas propias de cada bioma -- la pantalla
+// principal quiere ambos, el minijuego/saco ninguno (mas compactos, sin sitio).
+void drawBackground(uint8_t biome, uint32_t now, bool night, int horizon,
+                     bool sunMoonClouds, bool details) {
   int h = sceneHour();
   uint16_t top, bot;
   if (night)            { top = C565(0x0c, 0x12, 0x24); bot = C565(0x1e, 0x26, 0x46); }
@@ -731,29 +747,35 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
   else                  { top = C565(0xc7, 0x5a, 0x4a); bot = C565(0xf0, 0xae, 0x64); }  // atardecer
 
   // cielo en bandas
-  for (int y = 0; y < HORIZON; y += 8)
-    gfx->fillRect(0, y, 466, 8, lerp565(top, bot, y, HORIZON));
+  for (int y = 0; y < horizon; y += 8)
+    gfx->fillRect(0, y, 466, 8, lerp565(top, bot, y, horizon));
 
-  // sol o luna
-  if (night) {
-    gfx->fillCircle(360, 78, 24, C565(0xe8, 0xee, 0xf5));
-    gfx->fillCircle(370, 72, 22, lerp565(top, bot, 78, HORIZON));  // creciente
+  // estrellas de noche
+  if (night)
     for (auto &st : STARS) gfx->fillRect(st[0], st[1], 4, 4, UI_WHITE);
-  } else if (h < 18) {
-    gfx->fillCircle(360, 84, 26, h < 8 ? C565(0xff, 0xd9, 0x8a) : C565(0xff, 0xe7, 0x9f));
-    drawClouds(now, C565(0xff, 0xff, 0xff));
-  } else {
-    gfx->fillCircle(233, HORIZON - 6, 34, C565(0xff, 0xf1, 0xc8));  // sol poniente
+
+  // sol, luna y nubes
+  if (sunMoonClouds) {
+    if (night) {
+      gfx->fillCircle(360, 78, 24, C565(0xe8, 0xee, 0xf5));
+      gfx->fillCircle(370, 72, 22, lerp565(top, bot, 78, horizon));  // creciente
+    } else if (h < 18) {
+      gfx->fillCircle(360, 84, 26, h < 8 ? C565(0xff, 0xd9, 0x8a) : C565(0xff, 0xe7, 0x9f));
+      drawClouds(now, C565(0xff, 0xff, 0xff));
+    } else {
+      gfx->fillCircle(233, horizon - 6, 34, C565(0xff, 0xf1, 0xc8));  // sol poniente
+    }
   }
 
-  // mar de la playa: una franja de agua sobre la arena
   uint16_t soil = BIOME_SOIL[biome < 6 ? biome : 0];
   if (night) soil = lerp565(soil, C565(0x16, 0x1c, 0x30), 9, 16);
-  if (biome == 1) {
+
+  // mar de la playa: una franja de agua sobre la arena
+  if (details && biome == 1) {
     uint16_t sea = night ? C565(0x1c, 0x34, 0x52) : C565(0x4f, 0x96, 0xc4);
-    gfx->fillRect(0, HORIZON - 26, 466, 26, sea);
+    gfx->fillRect(0, horizon - 26, 466, 26, sea);
     for (int i = 0; i < 3; i++) {
-      int wy = HORIZON - 22 + i * 7;
+      int wy = horizon - 22 + i * 7;
       uint16_t fc = night ? C565(0x3a, 0x58, 0x78) : C565(0xbf, 0xe6, 0xf5);
       gfx->fillRect(60 + ((now / 60 + i * 30) % 60), wy, 26, 2, fc);
       gfx->fillRect(300 - ((now / 60 + i * 20) % 60), wy, 26, 2, fc);
@@ -761,36 +783,38 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
   }
 
   // suelo
-  gfx->fillRect(0, HORIZON, 466, 466 - HORIZON, soil);
+  gfx->fillRect(0, horizon, 466, 466 - horizon, soil);
+  if (!details) return;
+
   uint16_t hill = lerp565(soil, night ? C565(0x0c, 0x12, 0x24) : C565(0xff, 0xff, 0xff), 3, 16);
-  gfx->fillRoundRect(-60, HORIZON - 14, 586, 60, 30, hill);
+  gfx->fillRoundRect(-60, horizon - 14, 586, 60, 30, hill);
 
   // detalles del bioma
   uint16_t dk = lerp565(soil, C565(0x10, 0x18, 0x20), night ? 11 : 7, 16);
   if (biome == 2) {  // bosque: coniferas en silueta
     for (int tx : { 60, 150, 360, 416 }) {
-      gfx->fillTriangle(tx, HORIZON - 46, tx - 16, HORIZON, tx + 16, HORIZON, dk);
-      gfx->fillTriangle(tx, HORIZON - 60, tx - 12, HORIZON - 28, tx + 12, HORIZON - 28, dk);
+      gfx->fillTriangle(tx, horizon - 46, tx - 16, horizon, tx + 16, horizon, dk);
+      gfx->fillTriangle(tx, horizon - 60, tx - 12, horizon - 28, tx + 12, horizon - 28, dk);
     }
   } else if (biome == 3) {  // volcan: rocas y brasas
-    gfx->fillTriangle(70, HORIZON, 40, HORIZON + 30, 100, HORIZON + 30, dk);
-    gfx->fillTriangle(400, HORIZON + 4, 372, HORIZON + 30, 430, HORIZON + 30, dk);
+    gfx->fillTriangle(70, horizon, 40, horizon + 30, 100, horizon + 30, dk);
+    gfx->fillTriangle(400, horizon + 4, 372, horizon + 30, 430, horizon + 30, dk);
     if (!night)
       for (int e = 0; e < 4; e++)
-        gfx->fillRect(120 + e * 70, HORIZON + 8 + (e % 2) * 6, 4, 4, C565(0xff, 0x9b, 0x3a));
+        gfx->fillRect(120 + e * 70, horizon + 8 + (e % 2) * 6, 4, 4, C565(0xff, 0x9b, 0x3a));
   } else if (biome == 4) {  // montana: cumbres al fondo
-    gfx->fillTriangle(140, HORIZON - 50, 60, HORIZON, 220, HORIZON, dk);
-    gfx->fillTriangle(330, HORIZON - 38, 250, HORIZON, 410, HORIZON, dk);
+    gfx->fillTriangle(140, horizon - 50, 60, horizon, 220, horizon, dk);
+    gfx->fillTriangle(330, horizon - 38, 250, horizon, 410, horizon, dk);
   } else if (biome == 5 && !night) {  // nieve: copos cayendo
     for (int f = 0; f < 10; f++) {
       int fx = (f * 53 + now / 40) % 466;
-      int fy = (f * 90 + now / 18) % HORIZON;
+      int fy = (f * 90 + now / 18) % horizon;
       gfx->fillRect(fx, fy, 3, 3, UI_WHITE);
     }
   } else if (biome == 0) {  // pradera: matas de hierba
     for (int gx : { 80, 175, 300, 395 })
       for (int b = -1; b <= 1; b++)
-        gfx->fillRect(gx + b * 5, HORIZON + 6, 2, 8 + (b == 0 ? 4 : 0), dk);
+        gfx->fillRect(gx + b * 5, horizon + 6, 2, 8 + (b == 0 ? 4 : 0), dk);
   }
 }
 
@@ -850,9 +874,10 @@ void render() {
   }
   int h = sceneHour();
   gNight = pet.sleeping || h < 6 || h >= 20;
-  // drawScene cubre los 466x466 completos: sin fillScreen(NEGRO) previo para
-  // que un flush DMA solapado nunca capture negro a medias (anti-parpadeo)
-  drawScene(pet.isEgg() ? 0 : DEX_TBL[pet.speciesId].biome, millis(), gNight);
+  // drawBackground cubre los 466x466 completos: sin fillScreen(NEGRO) previo
+  // para que un flush DMA solapado nunca capture negro a medias (anti-parpadeo)
+  drawBackground(pet.isEgg() ? 0 : DEX_TBL[pet.speciesId].biome, millis(), gNight,
+                 HORIZON, true, true);
 
   if (pet.ceremony) {
     const DexEntry &d = DEX_TBL[pet.speciesId];
@@ -1059,12 +1084,12 @@ void sackTap() {
   sackShake = 16;  // sacude el saco
 }
 
-void drawGameScene();  // prototipo (definida mas abajo)
+void drawGameScene(bool night);  // prototipo (definida mas abajo)
 
 void renderSack() {
   uint32_t now = millis();
-  drawGameScene();  // fondo del habitat
-  bool night = sceneHour() < 6 || sceneHour() >= 20;
+  bool night = isSceneNight();
+  drawGameScene(night);  // fondo del habitat
   uint16_t ink = night ? UI_INK_NIGHT : UI_INK;
 
   // pantalla de resultado
@@ -1140,35 +1165,25 @@ void renderSack() {
   gfx->flush();
 }
 
-// fondo del minijuego: hatibat del bicho (cielo por hora + suelo del bioma)
-void drawGameScene() {
-  int hh = sceneHour();
-  bool night = hh < 6 || hh >= 20;
-  uint16_t top, bot;
-  if (night)       { top = C565(0x0c, 0x12, 0x24); bot = C565(0x1e, 0x26, 0x46); }
-  else if (hh < 8) { top = C565(0xd1, 0x6a, 0x86); bot = C565(0xf3, 0xb8, 0x7c); }
-  else if (hh < 18){ top = C565(0x8f, 0xc8, 0xea); bot = C565(0xdc, 0xee, 0xe6); }
-  else             { top = C565(0xc7, 0x5a, 0x4a); bot = C565(0xf0, 0xae, 0x64); }
-  int hor = 376;
-  for (int y = 0; y < hor; y += 8)
-    gfx->fillRect(0, y, 466, 8, lerp565(top, bot, y, hor));
-  if (night)
-    for (auto &st : STARS) gfx->fillRect(st[0], st[1], 4, 4, UI_WHITE);
+// fondo del minijuego/saco: habitat del bicho, mismo cielo por hora + suelo
+// del bioma que la pantalla principal pero mas compacto (sin sol/luna/nubes
+// ni detalles de bioma, ver drawBackground); night lo pasa el llamador para
+// no recalcularlo (isSceneNight() ya lo calculo una vez para el resto de la
+// pantalla)
+void drawGameScene(bool night) {
   uint8_t bio = pet.isEgg() ? 0 : DEX_TBL[pet.speciesId].biome;
-  uint16_t soil = BIOME_SOIL[bio < 6 ? bio : 0];
-  if (night) soil = lerp565(soil, C565(0x16, 0x1c, 0x30), 9, 16);
-  gfx->fillRect(0, hor, 466, 466 - hor, soil);
+  drawBackground(bio, millis(), night, 376, false, false);
 }
 
 void renderGame() {
   // sin fillScreen(NEGRO): drawGameScene cubre los 466x466 completos. Si el
   // DMA del flush anterior aun lee el buffer, vera contenido valido (no negro
   // a medio pintar), que era el parpadeo a 25 fps.
-  bool night = sceneHour() < 6 || sceneHour() >= 20;
+  bool night = isSceneNight();
   uint16_t ink = night ? UI_INK_NIGHT : UI_INK;
 
   if (gameOverUntil) {
-    drawGameScene();
+    drawGameScene(night);
     if (millis() > gameOverUntil) {
       gameOpen = false;
       return;
@@ -1199,7 +1214,7 @@ void renderGame() {
     return;
   }
 
-  drawGameScene();
+  drawGameScene(night);
   stepGame();
 
   // marcador, record y vidas
