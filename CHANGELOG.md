@@ -48,6 +48,12 @@ over serial at boot.
   file with every duration set to 0 used to spin `pmdFrameAt()` forever inside the
   render loop — a hang triggerable by any corrupt or malicious `.bin` reaching the SD
   card over USB.
+- `SdThumbs::load()` now validates `thumbs.bin`'s size before allocating, and checks
+  that the offset table and every thumbnail blob it points to actually fit inside the
+  file before `SdThumbs::get()` hands out a pointer. Previously a truncated or corrupt
+  `thumbs.bin` (a real risk: the web installer's transfer takes minutes) could read
+  past the PSRAM allocation — garbage on screen at best, a crash at worst. Added
+  `SdThumbs::unload()`, which the struct never had.
 
 ## [1.4] - 2026-08-07
 

@@ -92,9 +92,15 @@ bool SdThumbs::load() {
     Serial.println("sin thumbs.bin (galeria sin miniaturas)");
     return false;
   }
-  uint32_t size = f.size();
-  data = (uint8_t *)ps_malloc(size);
-  if (!data || f.read(data, size) != size || memcmp(data, "TPTH", 4) != 0) {
+  uint32_t sz = f.size();
+  // acota el tamano: evita un ps_malloc absurdo con un archivo corrupto o truncado
+  if (sz < 10 || sz > 2UL * 1024 * 1024) {
+    Serial.println("thumbs.bin invalido (tamano)");
+    f.close();
+    return false;
+  }
+  data = (uint8_t *)ps_malloc(sz);
+  if (!data || f.read(data, sz) != sz || memcmp(data, "TPTH", 4) != 0) {
     Serial.println("thumbs.bin invalido");
     if (data) { free(data); data = nullptr; }
     f.close();
@@ -102,15 +108,35 @@ bool SdThumbs::load() {
   }
   f.close();
   memcpy(&count, data + 4, 2);
+  // la tabla de offsets (uno por especie) debe caber entera en lo leido
+  if ((uint32_t)6 + 4UL * count > sz) {
+    Serial.println("thumbs.bin invalido (tabla de offsets)");
+    unload();
+    return false;
+  }
+  size = sz;
   loaded = true;
-  Serial.printf("miniaturas cargadas: %u (%u KB)\n", count, size / 1024);
+  Serial.printf("miniaturas cargadas: %u (%u KB)\n", count, sz / 1024);
   return true;
+}
+
+void SdThumbs::unload() {
+  if (data) {
+    free(data);
+    data = nullptr;
+  }
+  loaded = false;
+  count = 0;
+  size = 0;
 }
 
 const uint8_t *SdThumbs::get(int16_t dex) const {
   if (!loaded || dex < 1 || dex > count) return nullptr;
   uint32_t off;
   memcpy(&off, data + 6 + 4 * (dex - 1), 4);
+  if (off > size - 3) return nullptr;  // cabecera w,h,palCount debe caber (size >= 10 siempre)
+  uint32_t need = 3 + (uint32_t)data[off + 2] * 2 + (uint32_t)data[off] * data[off + 1];
+  if (need > size || off > size - need) return nullptr;  // el blob completo debe caber
   return data + off;
 }
 

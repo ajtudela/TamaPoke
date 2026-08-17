@@ -33,7 +33,9 @@ struct SdThumbs {
   bool loaded = false;
   uint8_t *data = nullptr;
   uint16_t count = 0;
+  uint32_t size = 0;  // tamano del blob: acota los offsets leidos del fichero
   bool load();
+  void unload();
   const uint8_t *get(int16_t dex) const;  // blob: w,h,palCount,pal[],idx[]
 };
 extern SdThumbs thumbs;
