@@ -106,6 +106,25 @@ over serial at boot.
   a raw byte buffer exactly as `putBytes()`/`getBytes()` would, and confirmed every
   field matches — `sizeof(PetSaveV2)` is 105 bytes, comfortably within NVS blob
   limits. Also confirmed a garbage magic or wrong version is correctly rejected.
+- Every timer comparison in the game is now safe across `millis()`'s ~49.7-day
+  rollover. All ~13 timers (`eatUntil`, `heartUntil`, `evolveUntil`, `medalUntil`,
+  `milestoneUntil`, `ceremonyUntil` in `Pet`; `confirmUntil`, `choiceUntil`,
+  `feedMenuUntil`, `bathUntil`, `sackUntil`, `sackOverUntil`, `gameOverUntil` in
+  `TamaPoke.ino`) store an absolute deadline and were compared with
+  `millis() < deadline` / `millis() > deadline` / `deadline - now`, all of which
+  give the wrong answer once `millis()` wraps past a stored deadline computed
+  before the wrap. Added `timeLeft(deadline)` (unsigned subtraction reinterpreted
+  as signed — correct as long as the real interval is well under ~24.8 days, true
+  for every timer here, the longest being ~12s) and replaced every direct
+  `millis()`-vs-deadline comparison with it; the deadline fields themselves are
+  unchanged (still `millis() + duration`, still 0 = inactive), so this only touches
+  how they're read, not how they're stored.
+
+  Verified with arduino-cli compile (`--warnings=all`): total warning count
+  unchanged before/after (16, all pre-existing and unrelated — this project's
+  pre-existing `%u`/`uint32_t` format mismatches and a couple of `-Wextra` enum
+  warnings scattered through the file, none touched by this change). No test of
+  actual rollover behavior was possible without letting a board run for 49.7 days.
 
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following
   Arduino's `src` sketch convention (compiled recursively, not shown as IDE tabs).

@@ -621,14 +621,14 @@ void onTap(int16_t x, int16_t y) {
     return;
   }
   if (confirmUntil) {        // dialogo "soltar?": SI / NO
-    if (millis() < confirmUntil && x >= 118 && x <= 218 && y >= 252 && y <= 304) {
+    if (timeLeft(confirmUntil) > 0 && x >= 118 && x <= 218 && y >= 252 && y <= 304) {
       pet.release();
     }
     confirmUntil = 0;
     return;
   }
   if (feedMenuUntil) {       // selector de comida
-    if (millis() < feedMenuUntil && y >= 288 && y <= 352 && x >= 101 && x <= 365) {
+    if (timeLeft(feedMenuUntil) > 0 && y >= 288 && y <= 352 && x >= 101 && x <= 365) {
       int item = (x - 101) / 66;
       if (item == 3) pet.feedCandy();
       else pet.feedBerry(item);
@@ -942,7 +942,7 @@ void render() {
 
   // selector de comida
   if (feedMenuUntil) {
-    if (millis() > feedMenuUntil) {
+    if (timeLeft(feedMenuUntil) == 0) {
       feedMenuUntil = 0;
     } else {
       gfx->fillRoundRect(101, 288, 264, 64, 14, UI_WHITE);
@@ -956,7 +956,7 @@ void render() {
 
   // dialogo "soltar?" (pulsacion larga sobre el bicho)
   if (confirmUntil) {
-    if (millis() > confirmUntil) {
+    if (timeLeft(confirmUntil) == 0) {
       confirmUntil = 0;
     } else {
       gfx->fillRoundRect(94, 168, 278, 152, 16, UI_WHITE);
@@ -979,7 +979,7 @@ void render() {
 
   // dialogo de decision (evolucionar/mantener, despedirse/quedaros)
   if (choiceKind) {
-    if (millis() > choiceUntil) choiceKind = 0;
+    if (timeLeft(choiceUntil) == 0) choiceKind = 0;
     else drawChoiceDialog();
   }
 
@@ -1092,7 +1092,7 @@ void startSack() {
 }
 
 void sackTap() {
-  if (millis() >= sackUntil) return;  // ya termino el tiempo
+  if (timeLeft(sackUntil) == 0) return;  // ya termino el tiempo
   sackHits++;
   sackShake = 16;  // sacude el saco
 }
@@ -1107,7 +1107,7 @@ void renderSack() {
 
   // pantalla de resultado
   if (sackOverUntil) {
-    if (now > sackOverUntil) { sackOpen = false; return; }
+    if (timeLeft(sackOverUntil) == 0) { sackOpen = false; return; }
     char b[20];
     snprintf(b, sizeof(b), T(S_HITS_FMT), sackHits);
     gfx->setTextColor(ink);
@@ -1137,7 +1137,7 @@ void renderSack() {
   }
 
   // se acabaron los 10 s: aplicar entrenamiento
-  if (now >= sackUntil) {
+  if (timeLeft(sackUntil) == 0) {
     sackNewHi = (sackHits > pet.strHi);
     sackGain = pet.trainStrength(sackHits);
     sfxPlay(sackNewHi ? SFX_MEDAL : SFX_PLAY);
@@ -1170,7 +1170,7 @@ void renderSack() {
   gfx->print(T(S_HIT_FAST));
 
   // barra de tiempo
-  uint32_t left = sackUntil - now;
+  uint32_t left = timeLeft(sackUntil);
   int bw = 280, fw = (int)((uint32_t)bw * left / 10000);
   gfx->fillRoundRect(CX - bw / 2, 350, bw, 16, 5, UI_TRACK);
   if (fw > 2) gfx->fillRoundRect(CX - bw / 2, 350, fw, 16, 5, UI_BAR_OK);
@@ -1197,7 +1197,7 @@ void renderGame() {
 
   if (gameOverUntil) {
     drawGameScene(night);
-    if (millis() > gameOverUntil) {
+    if (timeLeft(gameOverUntil) == 0) {
       gameOpen = false;
       return;
     }
@@ -2127,7 +2127,7 @@ void startBath() {
 
 void drawBath() {
   uint32_t now = millis();
-  if (now > bathUntil) {
+  if (timeLeft(bathUntil) == 0) {
     bathUntil = 0;
     if (bathPending) {
       bathPending = false;
@@ -2142,7 +2142,7 @@ void drawBath() {
     }
     return;
   }
-  uint32_t left = bathUntil - now;
+  uint32_t left = timeLeft(bathUntil);
   if (left > 800) {
     // espuma: pompas meciendose y subiendo poco a poco
     float t = now / 220.0f;
