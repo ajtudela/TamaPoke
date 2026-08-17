@@ -1704,21 +1704,38 @@ void keyboardTap(int16_t x, int16_t y) {
 #define GAL_Y 84
 #define GAL_CELL 80
 
+// dibuja un bitmap indexado agrupando tiradas horizontales del mismo indice
+// en una sola fillRect, en vez de una llamada por pixel de origen: los
+// sprites PMD y las miniaturas tienen zonas planas grandes, asi que el
+// numero de llamadas baja 3-6x tipicamente. idx==0xFF es transparente;
+// sil=true ignora la paleta y pinta todo en tinta (silueta).
+void blitIndexed(const uint8_t *px, int w, int h, const uint16_t *pal,
+                  int x0, int y0, int s, bool sil) {
+  for (int r = 0; r < h; r++) {
+    const uint8_t *row = px + (size_t)r * w;
+    int c = 0;
+    while (c < w) {
+      uint8_t idx = row[c];
+      if (idx == 0xFF) { c++; continue; }
+      int run = 1;
+      while (c + run < w && row[c + run] == idx) run++;
+      gfx->fillRect(x0 + c * s, y0 + r * s, run * s, s, sil ? INK_K : pal[idx]);
+      c += run;
+    }
+  }
+}
+
 // dibuja una miniatura centrada en su celda; sil=true la pinta en tinta
 void drawThumb(const uint8_t *b, int x, int y, int s, bool sil) {
   uint8_t w = b[0], h = b[1], n = b[2];
-  const uint8_t *pal = b + 3;
-  const uint8_t *d = pal + n * 2;
+  const uint8_t *palBytes = b + 3;
+  const uint8_t *d = palBytes + n * 2;
+  uint16_t pal[256];  // la paleta llega empaquetada en bytes; blitIndexed quiere uint16_t
+  for (uint8_t i = 0; i < n; i++)
+    pal[i] = palBytes[i * 2] | (palBytes[i * 2 + 1] << 8);
   int ox = x + (GAL_CELL - w * s) / 2;
   int oy = y + (GAL_CELL - h * s) / 2;
-  for (int r = 0; r < h; r++) {
-    for (int c = 0; c < w; c++) {
-      uint8_t idx = d[r * w + c];
-      if (idx == 0xFF) continue;
-      uint16_t col = sil ? INK_K : (uint16_t)(pal[idx * 2] | (pal[idx * 2 + 1] << 8));
-      gfx->fillRect(ox + c * s, oy + r * s, s, s, col);
-    }
-  }
+  blitIndexed(d, w, h, pal, ox, oy, s, sil);
 }
 
 void renderGallery() {
@@ -2172,14 +2189,7 @@ void drawPmdActM(PmdMon &m, uint8_t actId, int cx, int groundY, uint32_t t, bool
   // anclar por los pies (a.base), no por el alto del lienzo: asi las acciones
   // con padding distinto (Hurt, Eat...) quedan todas a la misma altura de suelo
   int x0 = cx - a.w * s / 2, y0 = groundY - (a.base ? a.base : a.h) * s;
-  for (int r = 0; r < a.h; r++) {
-    const uint8_t *row = fr + r * a.w;
-    for (int c = 0; c < a.w; c++) {
-      uint8_t idx = row[c];
-      if (idx == 0xFF) continue;
-      gfx->fillRect(x0 + c * s, y0 + r * s, s, s, sil ? INK_K : m.pal[idx]);
-    }
-  }
+  blitIndexed(fr, a.w, a.h, m.pal, x0, y0, s, sil);
 }
 void drawPmdAct(uint8_t actId, int cx, int groundY, uint32_t t, bool loop, bool sil, uint8_t maxS) {
   drawPmdActM(pmd, actId, cx, groundY, t, loop, sil, maxS);

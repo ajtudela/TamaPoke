@@ -42,6 +42,16 @@ over serial at boot.
   is computed once per render instead of calling `sceneHour()` twice per evaluation
   (short-circuit `||` re-evaluates it when the first half is false) and separately
   again in each of `renderSack()`/`renderGame()`/the old `drawGameScene()`.
+- Added `blitIndexed()`, a shared indexed-bitmap blitter that groups same-index
+  horizontal runs into one `fillRect()` instead of drawing one per source pixel —
+  sprites have large flat regions, so this typically cuts the number of draw calls
+  3-6x. Rewired `drawThumb()` (gallery thumbnails) and `drawPmdActM()` (the PMD
+  creature animation, the two highest-volume blit sites — up to ~2300 calls per
+  frame for a 48×48 sprite at scale 5) to use it; `drawMap()` (the small flash-
+  fallback sprites and UI icons) was left as-is, since its character-keyed pixel
+  format (`spriteColor(ch)`) isn't index-based like the other two, and unifying it
+  would mean forcing an artificial shared representation onto a much lower-volume,
+  differently-shaped code path for little real gain.
 
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following
   Arduino's `src` sketch convention (compiled recursively, not shown as IDE tabs).
