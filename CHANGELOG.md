@@ -75,6 +75,13 @@ over serial at boot.
   bytes with no trailing newline (`Serial.readStringUntil('\n')`'s timeout). It now
   assembles lines byte-by-byte from `Serial.available()` and only dispatches once a
   full line has arrived, in a new `processSerialLine()`.
+- `galleryTap()` and `keyboardTap()` now reject touches above/left of their grid
+  before dividing, instead of after. Integer division truncates toward zero, not
+  toward -∞, so a touch just outside the grid's top-left edge produced column/row 0
+  instead of a negative value the existing `< 0` guard could catch — on this round
+  screen, the edges are exactly where a finger rests without meaning to. Concretely:
+  tapping the round screen's left edge used to open Pokédex entry #1's detail view,
+  and tapping just above the keyboard used to type the letter 'A'.
 
 ## [1.4] - 2026-08-07
 
