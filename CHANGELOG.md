@@ -54,6 +54,12 @@ over serial at boot.
   `thumbs.bin` (a real risk: the web installer's transfer takes minutes) could read
   past the PSRAM allocation — garbage on screen at best, a crash at worst. Added
   `SdThumbs::unload()`, which the struct never had.
+- `Pet::level()` no longer wraps back to 0 at ~10.6 days of continuous play
+  (`uint8_t` overflow at level 256, with `MINUTES_PER_LEVEL=60`). The game itself
+  invites reaching that point: "stay together" can postpone a farewell
+  indefinitely. `level()` and `evoDeclinedLv` are now `uint16_t` (cosmetically
+  capped at 999, never wrapped), and `canEvolveNow()` no longer truncates
+  `evolveLevel + careMistakes` back to `uint8_t` before comparing against it.
 
 ## [1.4] - 2026-08-07
 

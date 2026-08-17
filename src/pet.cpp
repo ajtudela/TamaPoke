@@ -412,7 +412,8 @@ bool Pet::canEvolveNow() const {
   if (isEgg() || sleeping || ceremony != CER_NONE) return false;
   const DexEntry &d = DEX_TBL[speciesId];
   if (d.evolvesTo == 0) return false;
-  return level() >= (uint8_t)(d.evolveLevel + careMistakes) && lowestStat() >= 40;
+  uint16_t needed = (uint16_t)d.evolveLevel + careMistakes;  // no uint8_t truncation
+  return level() >= needed && lowestStat() >= 40;
 }
 
 void Pet::evolve() {
