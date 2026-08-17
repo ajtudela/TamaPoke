@@ -11,7 +11,7 @@ jobs:
     name: Compile firmware
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install arduino-cli
         uses: arduino/setup-arduino-cli@v2.0.0
@@ -38,8 +38,8 @@ jobs:
     name: Generated headers up to date
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
       - run: pip install pillow
@@ -59,8 +59,8 @@ jobs:
     name: Lint tools/ (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
       - run: pip install ruff
