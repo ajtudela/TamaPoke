@@ -65,6 +65,48 @@ over serial at boot.
   chase speed by that (relative to the ~85 ms step the constants were originally
   tuned around, capped at 3x to avoid a large jump after an unusually late frame).
 
+### Changed
+
+- `Pet::save()`/`Pet::load()` now use a single versioned NVS blob (`PetSaveV2`, one
+  `putBytes("save", ...)`/`getBytes(...)` call) instead of 35 separate NVS keys.
+  Every player action called `save()`, so this was 35 individual flash writes per
+  action instead of one; it also wasn't atomic — a power cut mid-`save()` could leave
+  a mixed old/new state across those 35 keys. Saves from before this change are
+  migrated automatically and losslessly: `load()` tries the new blob first, and only
+  if it's absent (or fails a magic/version sanity check) falls back to
+  `loadLegacyV1()` — the old 35-key reading logic, unchanged and kept around
+  indefinitely, including its own nested sub-migration from the pre-Pokédex-numbers
+  save format — then immediately writes the new blob so the *next* save is already
+  the fast, atomic path. The old keys are deliberately left in NVS rather than
+  deleted (harmless, and a safety margin — a rollback to older firmware still finds
+  its data).
+  - `syncClock()` read the previous session's timestamp via a direct
+    `prefs.getUInt("seen", 0)`, bypassing the object's own state; that key stops
+    being written once a player is on the new blob, which would have silently broken
+    offline-progression calculation. Changed to read `lastSeenEpoch` (already loaded
+    by `load()`) instead — behaves identically today, and keeps working after
+    migration.
+  - Preserved one exact pre-existing behavior that a single-blob write could easily
+    have dropped: a `save()` while `lastSeenEpoch` is momentarily 0 (RTC reporting no
+    valid time) must not erase the last known-good timestamp. Added `savedSeenEpoch`,
+    updated only when `lastSeenEpoch` is non-zero, and persisted in its place.
+  - `checkMedals()` (reached from `tick()`, the once-a-minute callback) called
+    `save()` directly whenever a medal was earned, defeating the deferred-save
+    mechanism `tick()` itself otherwise respects (a synchronous NVS write freezes
+    both cores for about a second — exactly what deferring saves until the screen
+    dims exists to avoid). Now sets `pendingSave = true` instead. `hatch()` and
+    `registerCare()`, the other two callers, already call `save()` themselves right
+    after `checkMedals()`, so this doesn't change their behavior (removes one
+    redundant write there, actually).
+
+  Verified the new blob format's on-the-wire layout with a standalone native test
+  (not part of the build, compiled with host g++): filled every field of
+  `PetSaveV2` with boundary-leaning values (min/max integers, a 12-character nick,
+  non-trivial `dexReg`/`dexShinyReg` bit patterns), round-tripped the struct through
+  a raw byte buffer exactly as `putBytes()`/`getBytes()` would, and confirmed every
+  field matches — `sizeof(PetSaveV2)` is 105 bytes, comfortably within NVS blob
+  limits. Also confirmed a garbage magic or wrong version is correctly rejected.
+
 - Reorganized the sketch's own headers and sources into `include/` and `src/`, following
   Arduino's `src` sketch convention (compiled recursively, not shown as IDE tabs).
   `pin_config.h`, `dex.h`, `species.h`, `pet.h`, `audio.h`, `rtcbat.h`, `sdmon.h` and

@@ -52,7 +52,7 @@ void Pet::setClock(uint32_t nowEpoch) {
 }
 
 void Pet::syncClock(uint32_t nowEpoch) {
-  uint32_t seen = prefs.getUInt("seen", 0);
+  uint32_t seen = lastSeenEpoch;  // hora vista la sesion anterior (load() ya la trajo)
   lastSeenEpoch = nowEpoch;
   if (nowEpoch == 0) return;
   uint32_t mins = (seen && nowEpoch > seen) ? (nowEpoch - seen) / 60 : 0;
@@ -311,7 +311,12 @@ void Pet::checkMedals() {
     newMedal = gained;
     medalUntil = millis() + 4000;
     if (!sleeping) sfxPlay(SFX_MEDAL);
-    save();
+    // NO save() sincrono aqui: checkMedals() se llama desde tick() (cada
+    // minuto de juego), y una escritura a flash sincrona ahi es justo lo que
+    // el guardado diferido existe para evitar (congela ~1s ambos nucleos, ver
+    // flushSave()). Los llamadores que quieren persistir ya mismo (hatch(),
+    // registerCare()) llaman a save() ellos mismos justo despues.
+    pendingSave = true;
   }
 }
 
@@ -550,48 +555,153 @@ PetMood Pet::mood() const {
   return MOOD_HAPPY;
 }
 
+// Formato de guardado v2: un unico blob NVS ("save") en vez de 35 claves
+// sueltas. Antes cada Pet::save() eran 35 escrituras NVS separadas (ni
+// atomico -- un corte de luz a mitad deja un estado mezclado -- ni barato:
+// se llamaba en cada accion del jugador). Un solo putBytes() es una sola
+// escritura, atomica desde el punto de vista de NVS.
+//
+// #pragma pack(1): el layout se serializa tal cual a bytes (sin el padding
+// que el compilador metería entre campos de distinto tamaño), asi que el
+// tamaño es estable y predecible entre guardado y carga.
+#pragma pack(push, 1)
+struct PetSaveV2 {
+  uint16_t magic;    // PET_SAVE_MAGIC: descarta basura antes de confiar en el resto
+  uint16_t version;  // 2
+  uint8_t fullness, joy, energy, hygiene, poops, weight;
+  uint8_t geneAtk, geneDef, geneSpe, trAtk, trDef, trSpe;
+  uint8_t berryKnown, shiny, eggShiny, starterPick, sleeping;  // bools como 0/1
+  uint8_t dexShinyReg[19];
+  uint8_t dexReg[19];
+  uint32_t ageMinutes;
+  int16_t speciesId;
+  int16_t eggTarget;
+  uint8_t eggTaps;
+  uint8_t careMistakes;
+  uint8_t lastEnd;
+  uint32_t lastSeenEpoch;
+  uint16_t streak;
+  uint16_t bestStreak;
+  uint32_t lastCareDay;
+  uint8_t bond;
+  uint16_t medals;
+  uint16_t totalMedals;
+  uint16_t lastMilestone;
+  uint16_t gameHi;
+  uint16_t strHi;
+  char nick[12];
+};
+#pragma pack(pop)
+#define PET_SAVE_MAGIC 0x5450  // 'PT', arbitrario: solo para descartar basura
+
 void Pet::save() {
   ticksSinceSave = 0;
   pendingSave = false;
-  prefs.putUChar("full", fullness);
-  prefs.putUChar("joy", joy);
-  prefs.putUChar("ene", energy);
-  prefs.putUChar("hyg", hygiene);
-  prefs.putUChar("poop", poops);
-  prefs.putUChar("wgt", weight);
-  prefs.putUChar("gatk", geneAtk);
-  prefs.putUChar("gdef", geneDef);
-  prefs.putUChar("gspe", geneSpe);
-  prefs.putUChar("tatk", trAtk);
-  prefs.putUChar("tdef", trDef);
-  prefs.putUChar("tspe", trSpe);
-  prefs.putBool("bk", berryKnown);
-  prefs.putBool("shy", shiny);
-  prefs.putBool("eshy", eggShiny);
-  prefs.putBool("stpk", starterPick);
-  prefs.putBytes("dexsh", dexShinyReg, sizeof(dexShinyReg));
-  prefs.putUInt("age", ageMinutes);
-  prefs.putShort("dexn", speciesId);
-  prefs.putShort("eggT2", eggTarget);
-  prefs.putUChar("crack", eggTaps);
-  prefs.putUChar("mist", careMistakes);
-  prefs.putBool("sleep", sleeping);
-  prefs.putUChar("lend", lastEnd);
-  if (lastSeenEpoch) prefs.putUInt("seen", lastSeenEpoch);
-  prefs.putBytes("dexreg", dexReg, sizeof(dexReg));
-  prefs.putUShort("strk", streak);
-  prefs.putUShort("bstrk", bestStreak);
-  prefs.putUInt("cday", lastCareDay);
-  prefs.putUChar("bond", bond);
-  prefs.putUShort("medal", medals);
-  prefs.putUShort("tmedal", totalMedals);
-  prefs.putUShort("mstone", lastMilestone);
-  prefs.putUShort("ghi", gameHi);
-  prefs.putUShort("shi", strHi);
-  prefs.putString("nick", nick);
+
+  PetSaveV2 s{};
+  s.magic = PET_SAVE_MAGIC;
+  s.version = 2;
+  s.fullness = fullness;
+  s.joy = joy;
+  s.energy = energy;
+  s.hygiene = hygiene;
+  s.poops = poops;
+  s.weight = weight;
+  s.geneAtk = geneAtk;
+  s.geneDef = geneDef;
+  s.geneSpe = geneSpe;
+  s.trAtk = trAtk;
+  s.trDef = trDef;
+  s.trSpe = trSpe;
+  s.berryKnown = berryKnown;
+  s.shiny = shiny;
+  s.eggShiny = eggShiny;
+  s.starterPick = starterPick;
+  s.sleeping = sleeping;
+  memcpy(s.dexShinyReg, dexShinyReg, sizeof(dexShinyReg));
+  memcpy(s.dexReg, dexReg, sizeof(dexReg));
+  s.ageMinutes = ageMinutes;
+  s.speciesId = speciesId;
+  s.eggTarget = eggTarget;
+  s.eggTaps = eggTaps;
+  s.careMistakes = careMistakes;
+  s.lastEnd = lastEnd;
+  // como antes: un lastSeenEpoch a 0 (RTC sin hora valida en este instante)
+  // no debe borrar la ultima hora buena conocida
+  if (lastSeenEpoch) savedSeenEpoch = lastSeenEpoch;
+  s.lastSeenEpoch = savedSeenEpoch;
+  s.streak = streak;
+  s.bestStreak = bestStreak;
+  s.lastCareDay = lastCareDay;
+  s.bond = bond;
+  s.medals = medals;
+  s.totalMedals = totalMedals;
+  s.lastMilestone = lastMilestone;
+  s.gameHi = gameHi;
+  s.strHi = strHi;
+  strncpy(s.nick, nick, sizeof(s.nick) - 1);
+  s.nick[sizeof(s.nick) - 1] = 0;
+
+  prefs.putBytes("save", &s, sizeof(s));
 }
 
 void Pet::load() {
+  PetSaveV2 s{};
+  bool haveV2 = prefs.isKey("save") &&
+                prefs.getBytes("save", &s, sizeof(s)) == sizeof(s) &&
+                s.magic == PET_SAVE_MAGIC && s.version == 2;
+  if (haveV2) {
+    fullness = s.fullness;
+    joy = s.joy;
+    energy = s.energy;
+    hygiene = s.hygiene;
+    poops = s.poops;
+    weight = s.weight;
+    geneAtk = s.geneAtk;
+    geneDef = s.geneDef;
+    geneSpe = s.geneSpe;
+    trAtk = s.trAtk;
+    trDef = s.trDef;
+    trSpe = s.trSpe;
+    berryKnown = s.berryKnown;
+    shiny = s.shiny;
+    eggShiny = s.eggShiny;
+    starterPick = s.starterPick;
+    sleeping = s.sleeping;
+    memcpy(dexShinyReg, s.dexShinyReg, sizeof(dexShinyReg));
+    memcpy(dexReg, s.dexReg, sizeof(dexReg));
+    ageMinutes = s.ageMinutes;
+    speciesId = s.speciesId;
+    eggTarget = s.eggTarget;
+    eggTaps = s.eggTaps;
+    careMistakes = s.careMistakes;
+    lastEnd = s.lastEnd;
+    lastSeenEpoch = s.lastSeenEpoch;
+    streak = s.streak;
+    bestStreak = s.bestStreak;
+    lastCareDay = s.lastCareDay;
+    bond = s.bond;
+    medals = s.medals;
+    totalMedals = s.totalMedals;
+    lastMilestone = s.lastMilestone;
+    gameHi = s.gameHi;
+    strHi = s.strHi;
+    strncpy(nick, s.nick, sizeof(nick) - 1);
+    nick[sizeof(nick) - 1] = 0;
+  } else {
+    loadLegacyV1();
+    save();  // sube de version ya: el siguiente guardado sera el blob atomico
+  }
+  savedSeenEpoch = lastSeenEpoch;
+  // siembra: la mascota actual cuenta como criada (guardados antiguos)
+  if (speciesId >= 1) registerSpecies(speciesId);
+}
+
+// formato anterior a v2: 35 claves NVS sueltas. Se conserva tal cual (no se
+// borran esas claves) para poder seguir leyendo partidas guardadas con
+// versiones previas del firmware; load() cae aqui solo si no encuentra un
+// blob "save" v2 valido.
+void Pet::loadLegacyV1() {
   fullness = prefs.getUChar("full", 80);
   joy = prefs.getUChar("joy", 80);
   energy = prefs.getUChar("ene", 80);
@@ -641,6 +751,4 @@ void Pet::load() {
   gameHi = prefs.getUShort("ghi", 0);
   strHi = prefs.getUShort("shi", 0);
   prefs.getString("nick", nick, sizeof(nick));
-  // siembra: la mascota actual cuenta como criada (guardados antiguos)
-  if (speciesId >= 1) registerSpecies(speciesId);
 }

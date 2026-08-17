@@ -188,5 +188,10 @@ private:
   void registerSpecies(int16_t dex);
   void save();
   void load();
+  void loadLegacyV1();  // formato anterior: 35 claves sueltas (y su propia sub-migracion)
+  // ultimo lastSeenEpoch no nulo conocido: setClock()/syncClock() pueden dejar
+  // lastSeenEpoch a 0 (RTC sin hora valida) sin que eso deba borrar de NVS la
+  // ultima hora buena conocida (ver comentario en Pet::save())
+  uint32_t savedSeenEpoch = 0;
   static uint8_t clamp100(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
 };
